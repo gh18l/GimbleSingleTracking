@@ -553,10 +553,11 @@ int Cost::Thtracking()
 		ref.copyTo(show_opencv2);
 		cv::rectangle(show_opencv2, tracking_roi, cv::Scalar(0, 0, 255), 5);
 		thread_flag = 1;  //可以imshow show_opencv2了
-		if (isfind() == 0)  //
+		if (isfind() == 0 || Thread_end == 1)  //
 		{
 			isfind_time = 0;  //检测计数器清零
 			istracking = 0;  //
+			Thread_end = 0;
 			std::cout << "thread exit!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
 			return 0;   //退出线程，准备下一次线程开始
 		}
@@ -651,10 +652,73 @@ std::vector<bbox_t> Cost::detection(cv::Mat img)
 }
 
 //according to the ref tracking, to choose the people in local
-bbox_t Cost::SetFaceBlock(cv::Mat ref_people,cv::Mat local)
+cv::Mat Cost::SetFaceBlock(cv::Mat ref_people,cv::Mat local)
 {
 	std::vector<bbox_t> vec = detection(local);
 	std::cout << "in local, we detect " << vec.size() << " people!!" << std::endl;
+	cv::Mat output;
+	//检测带人脸的行人，如果没有，则标志位置零
+	for (int z = 0; z < vec.size(); z++)
+	{
+		cv::Rect rect(vec[z].x, vec[z].y, vec[z].w, vec[z].h);
+		if (rect.x - 50 > 0 && rect.y - 50 > 0
+			&& rect.x + rect.width + 50 < local.cols - 1
+			&& rect.y + rect.height + 50 < local.rows - 1)
+		{
+			rect.x -= 50;
+			rect.y -= 50;
+			rect.width += 100;
+			rect.height += 100;
+		}
+
+		rect.height /= 2;
+		cv::Mat img;
+		local(rect).copyTo(img);
+		img.copyTo(output);
+		std::vector<bbox_t> face_vec;
+
+		float ratio_width;
+		float ratio_height;
+		ratio_width = static_cast<float>(img.cols) / 416.0f;
+		ratio_height = static_cast<float>(img.rows) / 416.0f;
+		cv::resize(img, img, cv::Size(416, 416));
+
+		cv::Mat imgf;
+		cv::cvtColor(img, imgf, cv::COLOR_BGR2RGB);
+		imgf.convertTo(imgf, CV_32F, 1.0 / 255.0);
+
+		float *img_h = new float[imgf.rows * imgf.cols * 3];
+		size_t count = 0;
+		for (size_t k = 0; k < 3; ++k) {
+			for (size_t i = 0; i < imgf.rows; ++i) {
+				for (size_t j = 0; j < imgf.cols; ++j) {
+		img_h[count++] = imgf.at<cv::Vec3f>(i, j).val[k];
+				}
+			}
+		}
+
+		float* img_d;
+		cudaMalloc(&img_d, sizeof(float) * 3 * img.rows * img.cols);
+		cudaMemcpy(img_d, img_h, sizeof(float) * 3 * img.rows * img.cols,
+		cudaMemcpyHostToDevice);
+
+
+		detector_face->detect(img_d, img.cols, img.rows, face_vec);
+		for (size_t i = 0; i < face_vec.size(); i++) 
+		{
+			face_vec[i].x *= ratio_width;
+			face_vec[i].y *= ratio_height;
+			face_vec[i].w *= ratio_width;
+			face_vec[i].h *= ratio_height;
+			if (face_vec[i].prob > 0.1 && face_vec[i].obj_id == 0)
+			{
+				cv::Rect face(face_vec[i].x, face_vec[i].y, face_vec[i].w, face_vec[i].h);
+				output(face).copyTo(current_show[1]);
+				find_face = 1;
+				return output;
+			}
+		}
+	}
 
 	/*double max = 0.0;
 	int index = 0;
@@ -669,75 +733,21 @@ bbox_t Cost::SetFaceBlock(cv::Mat ref_people,cv::Mat local)
 		}
 	}
 */
-	return vec[0];
+	return output;
 }
 
 //////detect the face according to the detected people
 int Cost::face_detection(cv::Mat local)
 {
-	bbox_t vec = SetFaceBlock(ref_people, local); //其实就是找到最有可能的行人框
-	/*vec.x = std::max<double>(vec.x - width_f / 2, 0.0f);
-	vec.y = std::max<double>(vec.y - height_f / 2, 0.0f);
-	vec.w = std::min<double>(width_f, local.cols - 1 - vec.x);
-	vec.h = std::min<double>(height_f, local.rows - 1 - vec.y);*/
-	cv::Rect2d rect(vec.x, vec.y, vec.w, vec.h);
-	if (rect.x - 40 > 0 && rect.y - 40 > 0
-		&& rect.x + rect.width + 80 < local.cols - 1
-		&& rect.y + rect.height + 80 < local.rows - 1)
+	cv::Mat Vec_people = SetFaceBlock(ref_people, local); //其实就是找到最有可能的行人框
+	if (find_face == 0)
+		return -1;
+	else
 	{
-		rect.x -= 40;
-		rect.y -= 40;
-		rect.width += 80;
-		rect.height += 80;
+		Vec_people.copyTo(current_show[0]);
+		find_face = 0;
+		return 0;
 	}
-	local(rect).copyTo(current_show[0]);
-	/*rect.height /= 2;
-	cv::Mat img,temp;
-	local(rect).copyTo(img);
-	img.copyTo(temp);
-	std::vector<bbox_t> face_vec;
-
-	float ratio_width;
-	float ratio_height;
-	ratio_width = static_cast<float>(img.cols) / 416.0f;
-	ratio_height = static_cast<float>(img.rows) / 416.0f;
-	cv::resize(img, img, cv::Size(416, 416));
-
-	cv::Mat imgf;
-	cv::cvtColor(img, imgf, cv::COLOR_BGR2RGB);
-	imgf.convertTo(imgf, CV_32F, 1.0 / 255.0);
-
-	float *img_h = new float[imgf.rows * imgf.cols * 3];
-	size_t count = 0;
-	for (size_t k = 0; k < 3; ++k) {
-		for (size_t i = 0; i < imgf.rows; ++i) {
-			for (size_t j = 0; j < imgf.cols; ++j) {
-				img_h[count++] = imgf.at<cv::Vec3f>(i, j).val[k];
-			}
-		}
-	}
-
-	float* img_d;
-	cudaMalloc(&img_d, sizeof(float) * 3 * img.rows * img.cols);
-	cudaMemcpy(img_d, img_h, sizeof(float) * 3 * img.rows * img.cols,
-		cudaMemcpyHostToDevice);
-
-
-	detector_face->detect(img_d, img.cols, img.rows, face_vec);
-	for (size_t i = 0; i < face_vec.size(); i++) {
-		face_vec[i].x *= ratio_width;
-		face_vec[i].y *= ratio_height;
-		face_vec[i].w *= ratio_width;
-		face_vec[i].h *= ratio_height;
-		if (face_vec[i].prob > 0.1 && face_vec[i].obj_id == 0)
-		{
-			cv::Rect face(face_vec[i].x, face_vec[i].y, face_vec[i].w, face_vec[i].h);
-			temp(face).copyTo(current_show[1]);
-		}
-	}*/
-
-
-	return 0;
 }
 
 int Cost::init_face_detection()

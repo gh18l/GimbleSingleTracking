@@ -77,7 +77,9 @@ public:
 	int thread_flag = 0;
 
 	int isfind_max;
+	bool find_face = 0;
 
+	int Thread_end = 0;
 private:
 	bool isfind();
 	std::vector<bbox_t> detection(cv::Mat img);    //only detect the people
@@ -91,7 +93,7 @@ public:
 	int video_initflow(cv::Mat src);
 	int video_preflow(cv::Mat src);
 	int SetBlock(cv::Mat img);
-	bbox_t SetFaceBlock(cv::Mat ref_people, cv::Mat local);
+	cv::Mat SetFaceBlock(cv::Mat ref_people, cv::Mat local);
 	int GetSum(cv::Mat input);
 	std::vector<int> choose_maxs(std::vector<int> sum);
 	int find_min(std::vector<int> index, std::vector<int>sum);

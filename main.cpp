@@ -136,7 +136,7 @@ void init(cv::Point init)    //别忘了关相机
 	cameraPtr->startCapture();
 	cameraPtr->setFPS(-1, 20);
 	cameraPtr->setAutoExposure(-1, cam::Status::on);
-	cameraPtr->setAutoExposureLevel(-1, 20);
+	cameraPtr->setAutoExposureLevel(-1, 40);
 	cameraPtr->setAutoWhiteBalance(-1);
 	cameraPtr->makeSetEffective();
 	// set capturing setting
@@ -636,7 +636,7 @@ int main(int argc, char* argv[]) {
 		result.copyTo(result_temp);
 		shoot(ref, local);
 		ref.copyTo(ref_temp);
-		stitcher.colorCorrectRGB(local, result_temp);
+		//stitcher.colorCorrectRGB(local, result_temp);
 		if (index > 50 && cost.video_updatedetection(ref_temp, src_point, dst_point) == 0 
 			&& stitcher.detect_move(dst_point) == 0)
 		{
@@ -661,17 +661,36 @@ int main(int argc, char* argv[]) {
 				//拍一张
 				shoot(ref, local);
 				ref.copyTo(ref_temp);
-				stitcher.colorCorrectRGB(local, result_temp);
+				cv::Mat local_temp;
+				resize(local, local_temp,
+					Size(800,600));
+				cv::imshow("local", local_temp);
+				//stitcher.colorCorrectRGB(local, result_temp);
 				//在local里检测人，对比并将local人抠出
-				cost.face_detection(local); //抠出的高清人放在current_show里，目前是行人和人脸
+				//抠出的高清人放在current_show里，目前是行人和人脸
+				if (cost.face_detection(local) == -1)   //没检测到人脸
+				{
+					//找
+					std::cout << "not find face!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+					stitcher.gimble_find_position(ref, local,
+						stitcher.current_point, 2, stitcher.current_point);
+					src_point = stitcher.current_point;
+					//结束线程，结束跟踪
+					cost.Thread_end = 1;
+					continue;
+				}
+				 
 				//算相机参数
 				warp(imgs, cameras, corners, sizes, local, stitcher.current_pulse,
 					current_para, features);   
 				//显示更新的current_show
-				cv::Mat people_temp;
+				cv::Mat people_temp, face_temp;
 				resize(cost.current_show[0], people_temp, 
 					Size(cost.current_show[0].cols, cost.current_show[0].rows));
+				resize(cost.current_show[1], face_temp,
+					Size(cost.current_show[1].cols * 4, cost.current_show[1].rows * 4));
 				cv::imshow("current people", people_temp);
+				cv::imshow("current face", face_temp);
 				cv::waitKey(30);
 				//找
 				stitcher.gimble_find_position(ref, local,
@@ -689,7 +708,7 @@ int main(int argc, char* argv[]) {
 				//拍一张
 				shoot(ref, local);
 				ref.copyTo(ref_temp);
-				stitcher.colorCorrectRGB(local, result_temp);
+				//stitcher.colorCorrectRGB(local, result_temp);
 				//算相机参数
 				warp(imgs, cameras, corners, sizes, local, stitcher.current_pulse,
 					current_para, features);
