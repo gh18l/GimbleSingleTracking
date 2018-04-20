@@ -777,36 +777,101 @@ int calib::FeatureMatch::global2pano(cv::Mat global, cv::Mat pano)       //¸ù¾İÀ
 	return 0;
 }
 
+
+//int calib::FeatureMatch::save_features(std::vector<calib::Imagefeature>& feature)
+//{
+//	std::ofstream para;
+//	para.open("E:/code/project/gimble3.23/featurepara.txt", std::ios::out);
+//	if (!para)
+//	{
+//		std::cout << "No have txt" << std::endl;
+//		return -1;
+//	}
+//	para << feature.size() << std::endl;
+//	for (int k = 0; k < feature.size(); k++)
+//	{
+//		para << feature[k].imgsize.width << " " << feature[k].imgsize.height << " ";
+//		para << feature[k].des.rows << " " << feature[k].des.cols << " ";
+//		for (int i = 0; i < feature[k].des.rows; i++)
+//		{
+//			for (int j = 0; j < feature[k].des.cols; j++)
+//			{
+//				para << feature[k].des.at<float>(i, j) << " ";
+//			}
+//		}
+//		para << feature[k].keypt.size() << " ";
+//		for (int i = 0; i < feature[k].keypt.size(); i++)
+//		{
+//			para << feature[k].keypt[i].pt.x << " " << feature[k].keypt[i].pt.y << " ";
+//		}
+//		para << std::endl;
+//	}
+//
+//	
+//	para.close();
+//
+//	return 0;
+//}
+
 int calib::FeatureMatch::save_features(std::vector<calib::Imagefeature>& feature)
 {
+	struct featurePara {
+		int width;
+		int height;
+		int des_row;
+		int des_col;
+        //des¾ØÕóµ¥¶À´æÈ¡
+		int keypt_size;
+		float ptx;
+		float pty;
+	};
+	std::vector<featurePara> featurePara(feature.size());
 	std::ofstream para;
-	para.open("E:/code/project/gimble3.23/featurepara.txt", std::ios::out);
+	para.open("E:/code/project/gimble3.23/featurepara.txt", ios::binary | std::ios::out);
 	if (!para)
 	{
 		std::cout << "No have txt" << std::endl;
 		return -1;
 	}
-	para << feature.size() << std::endl;
+
+	//put data into the struct
 	for (int k = 0; k < feature.size(); k++)
 	{
-		para << feature[k].imgsize.width << " " << feature[k].imgsize.height << " ";
-		para << feature[k].des.rows << " " << feature[k].des.cols << " ";
-		for (int i = 0; i < feature[k].des.rows; i++)
-		{
-			for (int j = 0; j < feature[k].des.cols; j++)
-			{
-				para << feature[k].des.at<float>(i, j) << " ";
-			}
-		}
-		para << feature[k].keypt.size() << " ";
+		featurePara[k].width = feature[k].imgsize.width;
+		featurePara[k].height = feature[k].imgsize.height;
+		featurePara[k].des_row = feature[k].des.rows;
+		featurePara[k].des_col = feature[k].des.cols;
+		featurePara[k].keypt_size = feature[k].keypt.size();
 		for (int i = 0; i < feature[k].keypt.size(); i++)
 		{
-			para << feature[k].keypt[i].pt.x << " " << feature[k].keypt[i].pt.y << " ";
+			featurePara[k].ptx = feature[k].keypt[i].pt.x;
 		}
-		para << std::endl;
+		
 	}
+			{
+				para << feature[k].imgsize.width << " " << feature[k].imgsize.height << " ";
+				para << feature[k].des.rows << " " << feature[k].des.cols << " ";
+				for (int i = 0; i < feature[k].des.rows; i++)
+				{
+					for (int j = 0; j < feature[k].des.cols; j++)
+					{
+						para << feature[k].des.at<float>(i, j) << " ";
+					}
+				}
+				para << feature[k].keypt.size() << " ";
+				for (int i = 0; i < feature[k].keypt.size(); i++)
+				{
+					para << feature[k].keypt[i].pt.x << " " << feature[k].keypt[i].pt.y << " ";
+				}
+				para << std::endl;
+			}
 
-	
+	int size = feature.size();
+	para.write((char*)(&size), sizeof(size));
+	for (int k = 0; k < feature.size(); k++)
+	{
+		para.write((char*)(&feature[k]), sizeof(feature[k]));
+	}
 	para.close();
 
 	return 0;
@@ -816,58 +881,80 @@ int calib::FeatureMatch::read_features(std::vector<calib::Imagefeature>& feature
 {
 	std::ifstream para;
 
-	para.open("E:/code/project/gimble3.23/featurepara.txt");
+	para.open("E:/code/project/gimble3.23/featurepara.txt",ios::binary);
 	if (!para.is_open())
 	{
 		std::cout << "can't open txt" << std::endl;
 		return -1;
 	}
 	int num;
-	std::string str;
-	getline(para, str);
-	num = stoi(str);
+	para.read((char*)(&num), sizeof(num));
+	feature.resize(num);
 	for (int k = 0; k < num; k++)
 	{
-		calib::Imagefeature current_feature;
-		getline(para, str, ' ');
-		current_feature.imgsize.width = stoi(str);
-		getline(para, str, ' ');
-		current_feature.imgsize.height = stoi(str);
-
-		getline(para, str, ' ');
-		int rows = stoi(str);
-		getline(para, str, ' ');
-		int cols = stoi(str);
-
-		cv::Mat desMat(rows, cols, CV_32F);
-		for (int i = 0; i < rows; i++)
-		{
-			for (int j = 0; j < cols; j++)
-			{
-				getline(para, str, ' ');
-				desMat.at<float>(i, j) = stof(str);
-			}
-		}
-		desMat.copyTo(current_feature.des);
-
-		getline(para, str, ' ');
-		int num_keypt = stoi(str);
-		current_feature.keypt.resize(num_keypt);
-		for (int i = 0; i < num_keypt; i++)
-		{
-			getline(para, str, ' ');
-			current_feature.keypt[i].pt.x = stof(str);
-			getline(para, str, ' ');
-			current_feature.keypt[i].pt.y = stof(str);
-		}
-
-		feature.push_back(current_feature);
-
-		getline(para, str);
+		para.read((char*)(&feature[k]), sizeof(feature[k]));
 	}
+	para.close();
 
 	return 0;
 }
+
+//int calib::FeatureMatch::read_features(std::vector<calib::Imagefeature>& feature)
+//{
+//	std::ifstream para;
+//
+//	para.open("E:/code/project/gimble3.23/featurepara.txt");
+//	if (!para.is_open())
+//	{
+//		std::cout << "can't open txt" << std::endl;
+//		return -1;
+//	}
+//	int num;
+//	std::string str;
+//	getline(para, str);
+//	num = stoi(str);
+//	for (int k = 0; k < num; k++)
+//	{
+//		calib::Imagefeature current_feature;
+//		getline(para, str, ' ');
+//		current_feature.imgsize.width = stoi(str);
+//		getline(para, str, ' ');
+//		current_feature.imgsize.height = stoi(str);
+//
+//		getline(para, str, ' ');
+//		int rows = stoi(str);
+//		getline(para, str, ' ');
+//		int cols = stoi(str);
+//
+//		cv::Mat desMat(rows, cols, CV_32F);
+//		for (int i = 0; i < rows; i++)
+//		{
+//			for (int j = 0; j < cols; j++)
+//			{
+//				getline(para, str, ' ');
+//				desMat.at<float>(i, j) = stof(str);
+//			}
+//		}
+//		desMat.copyTo(current_feature.des);
+//
+//		getline(para, str, ' ');
+//		int num_keypt = stoi(str);
+//		current_feature.keypt.resize(num_keypt);
+//		for (int i = 0; i < num_keypt; i++)
+//		{
+//			getline(para, str, ' ');
+//			current_feature.keypt[i].pt.x = stof(str);
+//			getline(para, str, ' ');
+//			current_feature.keypt[i].pt.y = stof(str);
+//		}
+//
+//		feature.push_back(current_feature);
+//
+//		getline(para, str);
+//	}
+//
+//	return 0;
+//}
 
 double calib::FeatureMatch::match_people(cv::Mat img1, cv::Mat img2)
 {

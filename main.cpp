@@ -246,36 +246,75 @@ int findoverlap(cv::Point corner_current, cv::Size size_current, vector<Point>& 
 	}
 	return 0;
 }
+//int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vector<Size>& sizes)
+//{
+//	ofstream para;
+//	Mat K;
+//	para.open("E:/code/project/gimble3.23/para.txt", ios::out);
+//	if (!para)
+//		cout << "No have txt" << endl;
+//	for (int i = 0; i < cameras.size(); i++)
+//	{
+//		para << cameras[i].focal << " " << cameras[i].aspect << " "
+//			<< cameras[i].ppx << " " << cameras[i].ppy << " ";
+//		//可以考虑看下Mat_模板类，K()const函数被定义在camera.cpp里
+//		for (int j = 0; j < 3; j++)
+//		{
+//			for (int k = 0; k < 3; k++)
+//			{
+//				para << cameras[i].R.at<double>(j, k) << " ";
+//			}
+//		}
+//		para << corners[i].x << " " << corners[i].y << " " << sizes[i].width << " " << sizes[i].height << " ";
+//		/*for (int j = 0; j < 3; j++)
+//		{
+//		para << cameras[i].t.at<float>(j,0) << " ";
+//		}*/
+//		para << endl;
+//	}
+//	para.close();
+//
+//	return 0;
+//}
+
 int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vector<Size>& sizes)
 {
-	ofstream para;
-	Mat K;
-	para.open("E:/code/project/gimble3.23/para.txt", ios::out);
-	if (!para)
-		cout << "No have txt" << endl;
+	struct cameraPara {
+		double focal; // Focal length
+		double aspect; // Aspect ratio
+		double ppx; // Principal point X
+		double ppy; // Principal point Y
+		cv::Mat R; // Rotation
+		cv::Mat t; // Translation
+		cv::Point corner;
+		cv::Size size;
+	};
+	std::vector<cameraPara> cameraPara(cameras.size());
 	for (int i = 0; i < cameras.size(); i++)
 	{
-		para << cameras[i].focal << " " << cameras[i].aspect << " "
-			<< cameras[i].ppx << " " << cameras[i].ppy << " ";
-		//可以考虑看下Mat_模板类，K()const函数被定义在camera.cpp里
-		for (int j = 0; j < 3; j++)
-		{
-			for (int k = 0; k < 3; k++)
-			{
-				para << cameras[i].R.at<double>(j, k) << " ";
-			}
-		}
-		para << corners[i].x << " " << corners[i].y << " " << sizes[i].width << " " << sizes[i].height << " ";
-		/*for (int j = 0; j < 3; j++)
-		{
-		para << cameras[i].t.at<float>(j,0) << " ";
-		}*/
-		para << endl;
+		cameraPara[i].focal = cameras[i].focal;
+		cameraPara[i].aspect = cameras[i].aspect;
+		cameraPara[i].ppx = cameras[i].ppx;
+		cameras[i].R.copyTo(cameraPara[i].R);
+		cameras[i].t.copyTo(cameraPara[i].t);
+		cameraPara[i].corner = corners[i];
+		cameraPara[i].size = sizes[i];
+	}
+	ofstream para;
+	para.open("E:/code/project/gimble3.23/para.txt", ios::out | ios::binary);
+	if (!para)
+		cout << "No have txt" << endl;
+	int size = cameras.size();
+	para.write((char*)(&size), sizeof(size));
+	for (int i = 0; i < cameras.size(); i++)
+	{
+		para.write((char*)(&cameraPara[i]), sizeof(cameraPara[i]));
 	}
 	para.close();
 
 	return 0;
 }
+
 int read_para(vector<calib::CameraParams> &cameras, vector<Point> &corners, vector<Size>&sizes)
 {
 	ifstream para;
