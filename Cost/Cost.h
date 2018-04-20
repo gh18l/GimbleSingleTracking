@@ -93,7 +93,7 @@ public:
 	int video_initflow(cv::Mat src);
 	int video_preflow(cv::Mat src);
 	int SetBlock(cv::Mat img);
-	cv::Mat SetFaceBlock(cv::Mat ref_people, cv::Mat local);
+	cv::Mat SetFaceBlock(cv::Mat ref_people, cv::Mat local, cv::Mat ref, cv::Point current_point);
 	int GetSum(cv::Mat input);
 	std::vector<int> choose_maxs(std::vector<int> sum);
 	int find_min(std::vector<int> index, std::vector<int>sum);
@@ -106,7 +106,7 @@ public:
 	bool iscontain(bbox_t roi);
 
 	double people_match(cv::Mat img1, cv::Mat img2);
-	int face_detection(cv::Mat local);
+	int face_detection(cv::Mat local, cv::Mat ref, cv::Point current_point);
 
 
 

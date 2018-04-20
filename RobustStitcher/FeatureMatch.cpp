@@ -815,17 +815,7 @@ int calib::FeatureMatch::global2pano(cv::Mat global, cv::Mat pano)       //¸ù¾İÀ
 
 int calib::FeatureMatch::save_features(std::vector<calib::Imagefeature>& feature)
 {
-	struct featurePara {
-		int width;
-		int height;
-		int des_row;
-		int des_col;
-        //des¾ØÕóµ¥¶À´æÈ¡
-		int keypt_size;
-		float ptx;
-		float pty;
-	};
-	std::vector<featurePara> featurePara(feature.size());
+	int num = feature.size();
 	std::ofstream para;
 	para.open("E:/code/project/gimble3.23/featurepara.txt", ios::binary | std::ios::out);
 	if (!para)
@@ -833,45 +823,29 @@ int calib::FeatureMatch::save_features(std::vector<calib::Imagefeature>& feature
 		std::cout << "No have txt" << std::endl;
 		return -1;
 	}
-
+	para.write((char*)(&num), sizeof(int));
 	//put data into the struct
+	//featureParaList->keypt1->keypt2->...->keyptn->des
 	for (int k = 0; k < feature.size(); k++)
 	{
-		featurePara[k].width = feature[k].imgsize.width;
-		featurePara[k].height = feature[k].imgsize.height;
-		featurePara[k].des_row = feature[k].des.rows;
-		featurePara[k].des_col = feature[k].des.cols;
-		featurePara[k].keypt_size = feature[k].keypt.size();
+		calib::featureParaList featurePara;
+		featurePara.width = feature[k].imgsize.width;
+		featurePara.height = feature[k].imgsize.height;
+		featurePara.des_row = feature[k].des.rows;
+		featurePara.des_col = feature[k].des.cols;
+		featurePara.keypt_size = feature[k].keypt.size();
+		para.write((char*)(&featurePara), sizeof(calib::featureParaList));
 		for (int i = 0; i < feature[k].keypt.size(); i++)
 		{
-			featurePara[k].ptx = feature[k].keypt[i].pt.x;
+			calib::keyptvalue keypt;
+			keypt.ptx = feature[k].keypt[i].pt.x;
+			keypt.pty = feature[k].keypt[i].pt.y;
+			para.write((char*)(&keypt), sizeof(calib::keyptvalue));
 		}
+		para.write((char*)(feature[k].des.data), sizeof(float) * feature[k].des.cols * feature[k].des.rows);
 		
 	}
-			{
-				para << feature[k].imgsize.width << " " << feature[k].imgsize.height << " ";
-				para << feature[k].des.rows << " " << feature[k].des.cols << " ";
-				for (int i = 0; i < feature[k].des.rows; i++)
-				{
-					for (int j = 0; j < feature[k].des.cols; j++)
-					{
-						para << feature[k].des.at<float>(i, j) << " ";
-					}
-				}
-				para << feature[k].keypt.size() << " ";
-				for (int i = 0; i < feature[k].keypt.size(); i++)
-				{
-					para << feature[k].keypt[i].pt.x << " " << feature[k].keypt[i].pt.y << " ";
-				}
-				para << std::endl;
-			}
 
-	int size = feature.size();
-	para.write((char*)(&size), sizeof(size));
-	for (int k = 0; k < feature.size(); k++)
-	{
-		para.write((char*)(&feature[k]), sizeof(feature[k]));
-	}
 	para.close();
 
 	return 0;
@@ -881,18 +855,33 @@ int calib::FeatureMatch::read_features(std::vector<calib::Imagefeature>& feature
 {
 	std::ifstream para;
 
-	para.open("E:/code/project/gimble3.23/featurepara.txt",ios::binary);
+	para.open("E:/code/project/gimble3.23/featurepara.txt", ios::binary | ios::in);
 	if (!para.is_open())
 	{
 		std::cout << "can't open txt" << std::endl;
 		return -1;
 	}
 	int num;
-	para.read((char*)(&num), sizeof(num));
-	feature.resize(num);
+	para.read((char*)(&num), sizeof(int));
 	for (int k = 0; k < num; k++)
 	{
-		para.read((char*)(&feature[k]), sizeof(feature[k]));
+		calib::featureParaList featurePara;
+		calib::Imagefeature current_feature;
+		para.read((char*)(&featurePara), sizeof(calib::featureParaList));
+		current_feature.imgsize.width = featurePara.width;
+		current_feature.imgsize.height = featurePara.height;
+		current_feature.keypt.resize(featurePara.keypt_size);
+		for (int i = 0; i < featurePara.keypt_size; i++)
+		{
+			calib::keyptvalue keypt;
+			para.read((char*)(&keypt), sizeof(calib::keyptvalue));
+			current_feature.keypt[i].pt.x = keypt.ptx;
+			current_feature.keypt[i].pt.y = keypt.pty;
+		}
+		cv::Mat temp(featurePara.des_row, featurePara.des_col, CV_32F);
+		para.read((char*)(temp.data), sizeof(float) * temp.cols * temp.rows);
+		temp.copyTo(current_feature.des);
+		feature.push_back(current_feature);
 	}
 	para.close();
 
@@ -966,7 +955,7 @@ double calib::FeatureMatch::match_people(cv::Mat img1, cv::Mat img2)
 	cv::cuda::SURF_CUDA surf_d1;
 	cv::cuda::GpuMat img_d1;
 	surf_d1.keypointsRatio = 0.1f;
-	surf_d1.hessianThreshold = featureExtractorParam.hess_thresh;
+	surf_d1.hessianThreshold = 1.0f;
 	surf_d1.extended = false;
 	surf_d1.nOctaves = featureExtractorParam.num_octaves;
 	surf_d1.nOctaveLayers = featureExtractorParam.num_layers;
@@ -989,7 +978,7 @@ double calib::FeatureMatch::match_people(cv::Mat img1, cv::Mat img2)
 	cv::cuda::SURF_CUDA surf_d2;
 	cv::cuda::GpuMat img_d2;
 	surf_d2.keypointsRatio = 0.1f;
-	surf_d2.hessianThreshold = featureExtractorParam.hess_thresh;
+	surf_d2.hessianThreshold = 1.0f;
 	surf_d2.extended = false;
 	surf_d2.nOctaves = featureExtractorParam.num_octaves;
 	surf_d2.nOctaveLayers = featureExtractorParam.num_layers;

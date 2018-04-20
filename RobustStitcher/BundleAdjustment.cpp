@@ -548,7 +548,7 @@ int calib::BundleAdjustment::solveMultipleFocal() {
     options.linear_solver_type = ceres::SPARSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
 	options.jacobi_scaling = false;
-	options.max_num_iterations = 1000;
+	options.max_num_iterations = 2000;
 	options.function_tolerance = 1e-8;
 	options.parameter_tolerance = 1e-8;
     ceres::Solver::Summary summary;

@@ -68,7 +68,7 @@ bool start_flag = 0;
 
 int delay_gimble()
 {
-	SysUtil::sleep(1500);
+	SysUtil::sleep(2000);
 	return 0;
 }
 int collectdelay_gimble()
@@ -246,75 +246,74 @@ int findoverlap(cv::Point corner_current, cv::Size size_current, vector<Point>& 
 	}
 	return 0;
 }
-//int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vector<Size>& sizes)
-//{
-//	ofstream para;
-//	Mat K;
-//	para.open("E:/code/project/gimble3.23/para.txt", ios::out);
-//	if (!para)
-//		cout << "No have txt" << endl;
-//	for (int i = 0; i < cameras.size(); i++)
-//	{
-//		para << cameras[i].focal << " " << cameras[i].aspect << " "
-//			<< cameras[i].ppx << " " << cameras[i].ppy << " ";
-//		//可以考虑看下Mat_模板类，K()const函数被定义在camera.cpp里
-//		for (int j = 0; j < 3; j++)
-//		{
-//			for (int k = 0; k < 3; k++)
-//			{
-//				para << cameras[i].R.at<double>(j, k) << " ";
-//			}
-//		}
-//		para << corners[i].x << " " << corners[i].y << " " << sizes[i].width << " " << sizes[i].height << " ";
-//		/*for (int j = 0; j < 3; j++)
-//		{
-//		para << cameras[i].t.at<float>(j,0) << " ";
-//		}*/
-//		para << endl;
-//	}
-//	para.close();
-//
-//	return 0;
-//}
-
 int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vector<Size>& sizes)
 {
-	struct cameraPara {
-		double focal; // Focal length
-		double aspect; // Aspect ratio
-		double ppx; // Principal point X
-		double ppy; // Principal point Y
-		cv::Mat R; // Rotation
-		cv::Mat t; // Translation
-		cv::Point corner;
-		cv::Size size;
-	};
-	std::vector<cameraPara> cameraPara(cameras.size());
-	for (int i = 0; i < cameras.size(); i++)
-	{
-		cameraPara[i].focal = cameras[i].focal;
-		cameraPara[i].aspect = cameras[i].aspect;
-		cameraPara[i].ppx = cameras[i].ppx;
-		cameras[i].R.copyTo(cameraPara[i].R);
-		cameras[i].t.copyTo(cameraPara[i].t);
-		cameraPara[i].corner = corners[i];
-		cameraPara[i].size = sizes[i];
-	}
 	ofstream para;
-	para.open("E:/code/project/gimble3.23/para.txt", ios::out | ios::binary);
+	Mat K;
+	para.open("E:/code/project/gimble3.23/para.txt", ios::out);
 	if (!para)
 		cout << "No have txt" << endl;
-	int size = cameras.size();
-	para.write((char*)(&size), sizeof(size));
 	for (int i = 0; i < cameras.size(); i++)
 	{
-		para.write((char*)(&cameraPara[i]), sizeof(cameraPara[i]));
+		para << cameras[i].focal << " " << cameras[i].aspect << " "
+			<< cameras[i].ppx << " " << cameras[i].ppy << " ";
+		//可以考虑看下Mat_模板类，K()const函数被定义在camera.cpp里
+		for (int j = 0; j < 3; j++)
+		{
+			for (int k = 0; k < 3; k++)
+			{
+				para << cameras[i].R.at<double>(j, k) << " ";
+			}
+		}
+		para << corners[i].x << " " << corners[i].y << " " << sizes[i].width << " " << sizes[i].height << " ";
+		/*for (int j = 0; j < 3; j++)
+		{
+		para << cameras[i].t.at<float>(j,0) << " ";
+		}*/
+		para << endl;
 	}
 	para.close();
 
 	return 0;
 }
 
+//int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vector<Size>& sizes)
+//{
+//	struct cameraPara {
+//		double focal; // Focal length
+//		double aspect; // Aspect ratio
+//		double ppx; // Principal point X
+//		double ppy; // Principal point Y
+//		cv::Mat R; // Rotation
+//		cv::Mat t; // Translation
+//		cv::Point corner;
+//		cv::Size size;
+//	};
+//	std::vector<cameraPara> cameraPara(cameras.size());
+//	for (int i = 0; i < cameras.size(); i++)
+//	{
+//		cameraPara[i].focal = cameras[i].focal;
+//		cameraPara[i].aspect = cameras[i].aspect;
+//		cameraPara[i].ppx = cameras[i].ppx;
+//		cameras[i].R.copyTo(cameraPara[i].R);
+//		cameras[i].t.copyTo(cameraPara[i].t);
+//		cameraPara[i].corner = corners[i];
+//		cameraPara[i].size = sizes[i];
+//	}
+//	ofstream para;
+//	para.open("E:/code/project/gimble3.23/para.txt", ios::out | ios::binary);
+//	if (!para)
+//		cout << "No have txt" << endl;
+//	int size = cameras.size();
+//	para.write((char*)(&size), sizeof(size));
+//	for (int i = 0; i < cameras.size(); i++)
+//	{
+//		para.write((char*)(&cameraPara[i]), sizeof(cameraPara[i]));
+//	}
+//	para.close();
+//
+//	return 0;
+//}
 int read_para(vector<calib::CameraParams> &cameras, vector<Point> &corners, vector<Size>&sizes)
 {
 	ifstream para;
@@ -675,7 +674,7 @@ int main(int argc, char* argv[]) {
 		result.copyTo(result_temp);
 		shoot(ref, local);
 		ref.copyTo(ref_temp);
-		//stitcher.colorCorrectRGB(local, result_temp);
+		stitcher.colorCorrectRGB(local, result_temp);
 		if (index > 50 && cost.video_updatedetection(ref_temp, src_point, dst_point) == 0 
 			&& stitcher.detect_move(dst_point) == 0)
 		{
@@ -699,21 +698,21 @@ int main(int argc, char* argv[]) {
 				delay_gimble();
 				//拍一张
 				shoot(ref, local);
+				//找
+				stitcher.gimble_find_position(ref, local,
+					stitcher.current_point, 2, stitcher.current_point);
+				src_point = stitcher.current_point;
 				ref.copyTo(ref_temp);
 				cv::Mat local_temp;
 				resize(local, local_temp,
 					Size(800,600));
-				cv::imshow("local", local_temp);
-				//stitcher.colorCorrectRGB(local, result_temp);
+				//cv::imshow("local", local_temp);
+				stitcher.colorCorrectRGB(local, result_temp);
 				//在local里检测人，对比并将local人抠出
 				//抠出的高清人放在current_show里，目前是行人和人脸
-				if (cost.face_detection(local) == -1)   //没检测到人脸
+				if (cost.face_detection(local, ref_temp,stitcher.current_point) == -1)   //没检测到人脸
 				{
-					//找
 					std::cout << "not find face!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-					stitcher.gimble_find_position(ref, local,
-						stitcher.current_point, 2, stitcher.current_point);
-					src_point = stitcher.current_point;
 					//结束线程，结束跟踪
 					cost.Thread_end = 1;
 					continue;
@@ -726,15 +725,11 @@ int main(int argc, char* argv[]) {
 				cv::Mat people_temp, face_temp;
 				resize(cost.current_show[0], people_temp, 
 					Size(cost.current_show[0].cols, cost.current_show[0].rows));
-				resize(cost.current_show[1], face_temp,
-					Size(cost.current_show[1].cols * 4, cost.current_show[1].rows * 4));
+				//resize(cost.current_show[1], face_temp,
+					//Size(cost.current_show[1].cols * 4, cost.current_show[1].rows * 4));
 				cv::imshow("current people", people_temp);
-				cv::imshow("current face", face_temp);
+				//cv::imshow("current face", face_temp);
 				cv::waitKey(30);
-				//找
-				stitcher.gimble_find_position(ref, local,
-					stitcher.current_point, 2, stitcher.current_point);
-				src_point = stitcher.current_point;
 			}
 
 			else //不需要更新tracking_roi
@@ -747,7 +742,7 @@ int main(int argc, char* argv[]) {
 				//拍一张
 				shoot(ref, local);
 				ref.copyTo(ref_temp);
-				//stitcher.colorCorrectRGB(local, result_temp);
+				stitcher.colorCorrectRGB(local, result_temp);
 				//算相机参数
 				warp(imgs, cameras, corners, sizes, local, stitcher.current_pulse,
 					current_para, features);

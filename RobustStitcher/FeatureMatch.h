@@ -45,6 +45,19 @@ namespace calib {
 		cv::Mat des;
 	};
 
+	//save
+	struct featureParaList {
+		int width;
+		int height;
+		int des_row;
+		int des_col;
+		int keypt_size;
+	};
+	struct keyptvalue {
+		float ptx;
+		float pty;
+	};
+
 	/**
 	@brief struct to save matches
 	*/
@@ -70,7 +83,7 @@ namespace calib {
 		int num_layers;
         int num_octaves_descr;
 		int num_layers_descr;
-		FeatureExtractorParam() : hess_thresh(1.0), num_octaves(3),    //300.0
+		FeatureExtractorParam() : hess_thresh(300.0), num_octaves(3),    //300.0
 			num_layers(4), num_octaves_descr(3), num_layers_descr(4) {}
 	};
 

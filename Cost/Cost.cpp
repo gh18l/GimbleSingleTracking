@@ -507,7 +507,7 @@ bool Cost::tracking(cv::Mat frame)
 	tracking_roi.width /= 2;
 	tracking_roi.height /= 2;
 	cv::rectangle(show_opencv, tracking_roi, cv::Scalar(0, 0, 255), 5);
-	resize(show_opencv, show_opencv, Size(800, 600));
+	cv::resize(show_opencv, show_opencv, Size(800, 600));
 	imshow("ref", show_opencv);
 	cv::waitKey(30);
 
@@ -558,7 +558,6 @@ int Cost::Thtracking()
 			isfind_time = 0;  //检测计数器清零
 			istracking = 0;  //
 			Thread_end = 0;
-			std::cout << "thread exit!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
 			return 0;   //退出线程，准备下一次线程开始
 		}
 	}
@@ -566,7 +565,6 @@ int Cost::Thtracking()
 
 void Cost::startTh()
 {
-	std::cout << "thread into!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
 	std::thread Th_tracking(&Cost::Thtracking, this);
 	Th_tracking.detach();
 }
@@ -652,71 +650,83 @@ std::vector<bbox_t> Cost::detection(cv::Mat img)
 }
 
 //according to the ref tracking, to choose the people in local
-cv::Mat Cost::SetFaceBlock(cv::Mat ref_people,cv::Mat local)
+cv::Mat Cost::SetFaceBlock(cv::Mat ref_people,cv::Mat local,cv::Mat ref, cv::Point current_point)
 {
+	cv::Rect current_roi = tracking_roi;
 	std::vector<bbox_t> vec = detection(local);
 	std::cout << "in local, we detect " << vec.size() << " people!!" << std::endl;
 	cv::Mat output;
-	//检测带人脸的行人，如果没有，则标志位置零
-	for (int z = 0; z < vec.size(); z++)
+	////get nearest people
+	int min = 10000;
+	int index = 0;
+	for (int i = 0; i < vec.size(); i++)
 	{
-		cv::Rect rect(vec[z].x, vec[z].y, vec[z].w, vec[z].h);
-		if (rect.x - 50 > 0 && rect.y - 50 > 0
-			&& rect.x + rect.width + 50 < local.cols - 1
-			&& rect.y + rect.height + 50 < local.rows - 1)
+		cv::Point temp;
+		temp.x = current_roi.x - current_point.x;
+		temp.y = current_roi.y - current_point.y;
+		if (abs(temp.x * 8 - vec[i].x) + abs(temp.y * 8 - vec[i].y) < min)
 		{
-			rect.x -= 50;
-			rect.y -= 50;
-			rect.width += 100;
-			rect.height += 100;
+			min = abs(temp.x * 8 - vec[i].x) + abs(temp.y * 8 - vec[i].y);
+			index = i;
 		}
+	}
+	//detect the face
+	cv::Rect rect(vec[index].x, vec[index].y, vec[index].w, vec[index].h);
+	if (rect.x - 50 > 0 && rect.y - 50 > 0
+		&& rect.x + rect.width + 50 < local.cols - 1
+		&& rect.y + rect.height + 50 < local.rows - 1)
+	{
+		rect.x -= 50;
+		rect.y -= 50;
+		rect.width += 100;
+		rect.height += 100;
+	}
 
-		rect.height /= 2;
-		cv::Mat img;
-		local(rect).copyTo(img);
-		img.copyTo(output);
-		std::vector<bbox_t> face_vec;
+	rect.height /= 2;
+	cv::Mat img;
+	local(rect).copyTo(img);
+	img.copyTo(output);
+	std::vector<bbox_t> face_vec;
 
-		float ratio_width;
-		float ratio_height;
-		ratio_width = static_cast<float>(img.cols) / 416.0f;
-		ratio_height = static_cast<float>(img.rows) / 416.0f;
-		cv::resize(img, img, cv::Size(416, 416));
+	float ratio_width;
+	float ratio_height;
+	ratio_width = static_cast<float>(img.cols) / 416.0f;
+	ratio_height = static_cast<float>(img.rows) / 416.0f;
+	cv::resize(img, img, cv::Size(416, 416));
 
-		cv::Mat imgf;
-		cv::cvtColor(img, imgf, cv::COLOR_BGR2RGB);
-		imgf.convertTo(imgf, CV_32F, 1.0 / 255.0);
+	cv::Mat imgf;
+	cv::cvtColor(img, imgf, cv::COLOR_BGR2RGB);
+	imgf.convertTo(imgf, CV_32F, 1.0 / 255.0);
 
-		float *img_h = new float[imgf.rows * imgf.cols * 3];
-		size_t count = 0;
-		for (size_t k = 0; k < 3; ++k) {
-			for (size_t i = 0; i < imgf.rows; ++i) {
-				for (size_t j = 0; j < imgf.cols; ++j) {
-		img_h[count++] = imgf.at<cv::Vec3f>(i, j).val[k];
-				}
+	float *img_h = new float[imgf.rows * imgf.cols * 3];
+	size_t count = 0;
+	for (size_t k = 0; k < 3; ++k) {
+		for (size_t i = 0; i < imgf.rows; ++i) {
+			for (size_t j = 0; j < imgf.cols; ++j) {
+				img_h[count++] = imgf.at<cv::Vec3f>(i, j).val[k];
 			}
 		}
+	}
 
-		float* img_d;
-		cudaMalloc(&img_d, sizeof(float) * 3 * img.rows * img.cols);
-		cudaMemcpy(img_d, img_h, sizeof(float) * 3 * img.rows * img.cols,
+	float* img_d;
+	cudaMalloc(&img_d, sizeof(float) * 3 * img.rows * img.cols);
+	cudaMemcpy(img_d, img_h, sizeof(float) * 3 * img.rows * img.cols,
 		cudaMemcpyHostToDevice);
 
 
-		detector_face->detect(img_d, img.cols, img.rows, face_vec);
-		for (size_t i = 0; i < face_vec.size(); i++) 
+	detector_face->detect(img_d, img.cols, img.rows, face_vec);
+	for (size_t i = 0; i < face_vec.size(); i++)
+	{
+		face_vec[i].x *= ratio_width;
+		face_vec[i].y *= ratio_height;
+		face_vec[i].w *= ratio_width;
+		face_vec[i].h *= ratio_height;
+		if (face_vec[i].prob > 0.1 && face_vec[i].obj_id == 0)
 		{
-			face_vec[i].x *= ratio_width;
-			face_vec[i].y *= ratio_height;
-			face_vec[i].w *= ratio_width;
-			face_vec[i].h *= ratio_height;
-			if (face_vec[i].prob > 0.1 && face_vec[i].obj_id == 0)
-			{
-				cv::Rect face(face_vec[i].x, face_vec[i].y, face_vec[i].w, face_vec[i].h);
-				output(face).copyTo(current_show[1]);
-				find_face = 1;
-				return output;
-			}
+			cv::Rect face(face_vec[i].x, face_vec[i].y, face_vec[i].w, face_vec[i].h);
+			output(face).copyTo(current_show[1]);
+			find_face = 1;
+			return output;
 		}
 	}
 
@@ -737,9 +747,9 @@ cv::Mat Cost::SetFaceBlock(cv::Mat ref_people,cv::Mat local)
 }
 
 //////detect the face according to the detected people
-int Cost::face_detection(cv::Mat local)
+int Cost::face_detection(cv::Mat local,cv::Mat ref,cv::Point current_point)
 {
-	cv::Mat Vec_people = SetFaceBlock(ref_people, local); //其实就是找到最有可能的行人框
+	cv::Mat Vec_people = SetFaceBlock(ref_people, local,ref, current_point); //找到最有可能的行人框
 	if (find_face == 0)
 		return -1;
 	else
@@ -764,7 +774,7 @@ double Cost::people_match(cv::Mat img1, cv::Mat img2)
 	cv::Mat temp1, temp2;
 	img1.copyTo(temp1);
 	img2.copyTo(temp2);
-	resize(temp1, temp1, cv::Size(temp2.cols, temp2.rows));
+	cv::resize(temp1, temp1, cv::Size(temp2.cols, temp2.rows));
 	double confidence = match.match_people(temp1, temp2);
 	return confidence;
 }
