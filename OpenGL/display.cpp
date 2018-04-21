@@ -2,20 +2,17 @@
 #include <shader_m.h>
 #include <iostream>
 Display::~Display() {}
-Display::Display() {}
+Display::Display() {
+}
 void processInput(GLFWwindow *window);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 // camera
-const unsigned int SCR_WIDTH = 6000;
-const unsigned int SCR_HEIGHT = 5000;
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-float lastX = SCR_WIDTH; // 2.0;
-float lastY = SCR_HEIGHT; // 2.0;
 
 int flag = 0;   //×ó¼üÊÇ·ñ°´ÏÂ
 float deltaTime = 0.0f;	// time between current frame and last frame
@@ -24,20 +21,19 @@ float fov = 45.0f;
 bool firstMouse = true;
 Shader ourShader;
 unsigned int VBO, VAO;
+unsigned int VBO1, VAO1;
 unsigned int texture1;
-float vertices[] = {
-	-1.0f, -1.0f, -0.0f,  0.0f, 1.0f,
-	1.0f, -1.0f, -0.0f,  1.0f, 1.0f,
-	1.0f,  1.0f, -0.0f,  1.0f, 0.0f,
-	1.0f,  1.0f, -0.0f,  1.0f, 0.0f,
-	-1.0f,  1.0f, -0.0f,  0.0f, 0.0f,
-	-1.0f, -1.0f, -0.0f,  0.0f, 1.0f
-};
-glm::vec3 cubePositions[] = {
-	glm::vec3(0.0f,  0.0f,  0.0f)
-};
-int Display::display_init()
+unsigned int texture2;
+unsigned int SCR_WIDTH;
+unsigned int SCR_HEIGHT;
+float lastX = (float)SCR_WIDTH / 2.0;
+float lastY = (float)SCR_HEIGHT / 2.0;
+
+glm::vec3 cubePositions = glm::vec3(0.0f,  0.0f,  0.0f);
+int Display::display_init(cv::Mat img)
 {
+	SCR_WIDTH = img.cols + 650;
+	SCR_HEIGHT = img.rows;
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -59,43 +55,64 @@ int Display::display_init()
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	// tell GLFW to capture our mouse
-	// glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	// glad: load all OpenGL function pointers
-	// ---------------------------------------
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
 
-	// configure global opengl state
-	// -----------------------------
-	glEnable(GL_DEPTH_TEST);
-	// build and compile our shader zprogram
-	// ------------------------------------
 	ourShader.Shader1("E:/code/project/gimble4.5/model/7.3.camera.vs", "E:/code/project/gimble4.5/model/7.3.camera.fs");
+
+	float ratio = static_cast<float>(img.cols - SCR_WIDTH / 2) / static_cast<float>(SCR_WIDTH / 2);
+	float vertices[] = {
+		-1.0f, -1.0f, -0.0f,  0.0f, 1.0f,
+		ratio, -1.0f, -0.0f,  1.0f, 1.0f,
+		ratio,  1.0f, -0.0f,  1.0f, 0.0f,
+		ratio,  1.0f, -0.0f,  1.0f, 0.0f,
+		-1.0f, 1.0f, -0.0f,  0.0f, 0.0f,
+		-1.0f, -1.0f, -0.0f,  0.0f, 1.0f
+	};
+	float ratio_people_width = 600.0f / static_cast<float>(SCR_WIDTH / 2);
+	float ratio_people_height = 600.0f / static_cast<float>(SCR_HEIGHT / 2);
+	float vertices_people[] = {
+		ratio, 1.0f - ratio_people_height, -0.0f,  0.0f, 1.0f,
+		ratio + ratio_people_width, 1.0f - ratio_people_height, -0.0f,  1.0f, 1.0f,
+		ratio + ratio_people_width,  1.0f, -0.0f,  1.0f, 0.0f,
+		ratio + ratio_people_width,  1.0f, -0.0f,  1.0f, 0.0f,
+		ratio, 1.0f, -0.0f,  0.0f, 0.0f,
+		ratio, 1.0f - ratio_people_height, -0.0f,  0.0f, 1.0f
+	};
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
-
 	glBindVertexArray(VAO);
-
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-
-	// position attribute
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	// texture coord attribute
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glGenVertexArrays(1, &VAO1);
+	glGenBuffers(1, &VBO1);
+	glBindVertexArray(VAO1);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO1);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_people), vertices_people, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
 	glGenTextures(1, &texture1);
 	glBindTexture(GL_TEXTURE_2D, texture1);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glGenTextures(1, &texture2);
+	glBindTexture(GL_TEXTURE_2D, texture2);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -105,60 +122,45 @@ int Display::display_init()
 }
 
 
-int Display::display(cv::Mat img)
+int Display::display(cv::Mat img,cv::Mat people)
 {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.cols, img.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, img.data);
-
+	glBindTexture(GL_TEXTURE_2D, texture1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.cols, img.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+	glBindTexture(GL_TEXTURE_2D, texture2);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, people.cols, people.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, people.data);
     // -----------
     if (!glfwWindowShouldClose(window))
     {
-
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
-        // bind textures on corresponding texture units
+		glBindVertexArray(VAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
-
-        // activate shader
         ourShader.use();
-
-        // pass projection matrix to shader (note that in this case it could change every frame)
         glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         ourShader.setMat4("projection", projection);
-
-        // camera/view transformation
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         ourShader.setMat4("view", view);
+        glm::mat4 model;
+        ourShader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        // render boxes
-        glBindVertexArray(VAO);
-        for (unsigned int i = 0; i < 1; i++)
-        {
-            // calculate the model matrix for each object and pass it to shader before drawing
-            glm::mat4 model;
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            ourShader.setMat4("model", model);
+		glBindVertexArray(VAO1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture2);
+		ourShader.use();
+		glm::mat4 projection1;
+		ourShader.setMat4("projection", projection1);
+		glm::mat4 view1;
+		ourShader.setMat4("view", view1);
+		glm::mat4 model1;
+		ourShader.setMat4("model", model1);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
-
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
-    //glDeleteVertexArrays(1, &VAO);
-    //glDeleteBuffers(1, &VBO);
-
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-   // glfwTerminate();
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
     return 0;
 }
 

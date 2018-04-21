@@ -65,10 +65,11 @@ std::shared_ptr<cam::GenCamera> cameraPtr;
 int num=0;
 cv::VideoWriter writer1, writer2;
 bool start_flag = 0;
+bool startTracking_flag = 0;
 
 int delay_gimble()
 {
-	SysUtil::sleep(2000);
+	SysUtil::sleep(1500);
 	return 0;
 }
 int collectdelay_gimble()
@@ -663,7 +664,7 @@ int main(int argc, char* argv[]) {
 	}
 	calib::CameraParams current_para;
 	calib::Compositor compositor;
-	display.display_init();
+	display.display_init(result);
 	cost.init_people_detection(ref);
 	cost.init_face_detection();
 	cv::Mat ref_temp;
@@ -704,8 +705,8 @@ int main(int argc, char* argv[]) {
 				src_point = stitcher.current_point;
 				ref.copyTo(ref_temp);
 				cv::Mat local_temp;
-				resize(local, local_temp,
-					Size(800,600));
+				//resize(local, local_temp,
+					//Size(800,600));
 				//cv::imshow("local", local_temp);
 				stitcher.colorCorrectRGB(local, result_temp);
 				//在local里检测人，对比并将local人抠出
@@ -722,14 +723,15 @@ int main(int argc, char* argv[]) {
 				warp(imgs, cameras, corners, sizes, local, stitcher.current_pulse,
 					current_para, features);   
 				//显示更新的current_show
-				cv::Mat people_temp, face_temp;
-				resize(cost.current_show[0], people_temp, 
-					Size(cost.current_show[0].cols, cost.current_show[0].rows));
+				//cv::Mat people_temp, face_temp;
+				//resize(cost.current_show[0], people_temp, 
+					//Size(cost.current_show[0].cols, cost.current_show[0].rows));
 				//resize(cost.current_show[1], face_temp,
 					//Size(cost.current_show[1].cols * 4, cost.current_show[1].rows * 4));
-				cv::imshow("current people", people_temp);
+				//cv::imshow("current people", people_temp);
 				//cv::imshow("current face", face_temp);
-				cv::waitKey(30);
+				//cv::waitKey(30);
+				startTracking_flag = 1;
 			}
 
 			else //不需要更新tracking_roi
@@ -764,7 +766,18 @@ int main(int argc, char* argv[]) {
 		compositor.single_composite(current_para, local, result_temp, corners, sizes);
 		//显示
 		resize(result_temp, result_temp, cv::Size((result_temp.cols / 100) * 100, (result_temp.rows / 100) * 100));
-		display.display(result_temp);
+		if (startTracking_flag == 0)
+		{
+			cv::Mat black = cv::Mat::zeros(600, 600, CV_8UC3);
+			display.display(result_temp, black);
+		}
+		else
+		{
+			cv::Mat people_temp;
+			cv::resize(cost.current_show[0], people_temp, cv::Size(600, 600));
+			display.display(result_temp, people_temp);
+		}
+		
 		if (cost.thread_flag == 1)   //进入过一次tracking线程
 		{
 			cv::Mat tracking_temp;

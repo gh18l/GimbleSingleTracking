@@ -21,12 +21,11 @@ private:
 	float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
 	float pitch =  0.0f;
 	// timing
-
 public:
-	int Display::display_init();
+	int display_init(cv::Mat img);
 	GLFWwindow* window;
 public:
-	int Display::display(cv::Mat img);
+	int display(cv::Mat img,cv::Mat people);
 public:
 	Display();
 	~Display();

@@ -408,7 +408,7 @@ void calib::FeatureMatch::current_feature_thread_(cv::Mat& src, calib::Imagefeat
 		cv::cuda::SURF_CUDA surf_d1;
 		cv::cuda::GpuMat img_d1;
 		surf_d1.keypointsRatio = 0.1f;
-		surf_d1.hessianThreshold = 3000.0;
+		surf_d1.hessianThreshold = 5000.0;
 		surf_d1.extended = false;
 		surf_d1.nOctaves = featureExtractorParam.num_octaves;
 		surf_d1.nOctaveLayers = featureExtractorParam.num_layers;
