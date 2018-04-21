@@ -278,43 +278,6 @@ int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vect
 	return 0;
 }
 
-//int save_para(vector<calib::CameraParams>& cameras, vector<Point>& corners, vector<Size>& sizes)
-//{
-//	struct cameraPara {
-//		double focal; // Focal length
-//		double aspect; // Aspect ratio
-//		double ppx; // Principal point X
-//		double ppy; // Principal point Y
-//		cv::Mat R; // Rotation
-//		cv::Mat t; // Translation
-//		cv::Point corner;
-//		cv::Size size;
-//	};
-//	std::vector<cameraPara> cameraPara(cameras.size());
-//	for (int i = 0; i < cameras.size(); i++)
-//	{
-//		cameraPara[i].focal = cameras[i].focal;
-//		cameraPara[i].aspect = cameras[i].aspect;
-//		cameraPara[i].ppx = cameras[i].ppx;
-//		cameras[i].R.copyTo(cameraPara[i].R);
-//		cameras[i].t.copyTo(cameraPara[i].t);
-//		cameraPara[i].corner = corners[i];
-//		cameraPara[i].size = sizes[i];
-//	}
-//	ofstream para;
-//	para.open("E:/code/project/gimble3.23/para.txt", ios::out | ios::binary);
-//	if (!para)
-//		cout << "No have txt" << endl;
-//	int size = cameras.size();
-//	para.write((char*)(&size), sizeof(size));
-//	for (int i = 0; i < cameras.size(); i++)
-//	{
-//		para.write((char*)(&cameraPara[i]), sizeof(cameraPara[i]));
-//	}
-//	para.close();
-//
-//	return 0;
-//}
 int read_para(vector<calib::CameraParams> &cameras, vector<Point> &corners, vector<Size>&sizes)
 {
 	ifstream para;
@@ -464,9 +427,6 @@ int warp(std::vector<cv::Mat>& imgs, vector<calib::CameraParams> &cameras,
 			vector<Point> &corners, vector<Size>&sizes, cv::Mat& src, cv::Point2f current_pulse, 
 				calib::CameraParams& current_para, std::vector<calib::Imagefeature>& features)
 {
-	/*vector<calib::CameraParams> cameras(stitcher.Row*stitcher.Col);
-	vector<Point> corners(stitcher.Row*Col);
-	vector<Size> sizes(stitcher.Row*Col);*/
 	cv::Ptr<cv::detail::SphericalWarper> w = cv::makePtr<cv::detail::SphericalWarper>(false);
 	std::shared_ptr<cv::detail::Blender> blender_ = std::make_shared<cv::detail::MultiBandBlender>(false);
 	clock_t start, finish;
@@ -541,12 +501,6 @@ int warp(std::vector<cv::Mat>& imgs, vector<calib::CameraParams> &cameras,
 
 	return 0;
 }
-int show(cv::Mat result)
-{
-	//display.display(result);
-
-	return 0;
-}
 
 int get_position(cv::Mat refImg,cv::Mat localImg,cv::Rect& refRect)
 {
@@ -571,46 +525,6 @@ int get_position(cv::Mat refImg,cv::Mat localImg,cv::Rect& refRect)
 }
 
 int main(int argc, char* argv[]) {
-	
-	/*cv::Mat	src = cv::imread("E:/datasets/2018.2.9/cc2/local_200_180_0.png");
-	cv::Mat	img = cv::imread("E:/datasets/2018.2.9/cc2/local_200_210_0.png");
-	
-	calib::FeatureMatch match;
-	calib::Imagefeature features;
-	calib::Imagefeature current_feature;
-	calib::Matchesinfo current_matchesInfo;
-	match.current_feature_thread_(src, img, features, current_feature, current_matchesInfo, 0);
-	system("pause");*/
-	
-	
-	/*cv::Mat global = cv::imread("E:/code/gimble3.20/Sln/test/global_0_30_0.png");
-	cv::Mat pano = cv::imread("E:/code/gimble3.20/Sln/test/result.jpg");
-	std::string modelname = "E:/code/y/model/model.yml";
-	cv::Rect roi(1000, 1000, pano.cols - 1500, pano.rows - 1500);
-	cv::Mat pano1;
-	pano(roi).copyTo(pano1);
-	stitcher.init(global, pano1, modelname, 0.28);
-	stitcher.firstIteration();
-	stitcher.secondIteration();
-	stitcher.thirdIteration();
-	stitcher.fourthIteration();
-	cv::Mat finalWarpImg = stitcher.getFinalWarpImg();
-	cv::imwrite("out.jpg", finalWarpImg);
-	cv::imwrite("out_refBlk.jpg", stitcher.getRefBlkImg());*/
-	/*calib::FeatureMatch match;
-	match.global2pano(global, pano);*/
-	//////////////////////////
-	/*cv::Mat global = cv::imread("D:/data/aa/local_0_0.png");
-	display.display_init();
-	display.display(global);
-	system("pause");*/
-
-	/*unsigned char a[16] = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
-	cv::Mat img(4, 4, CV_8U, a);
-	cv::Mat ker = cv::Mat::ones(3, 3, CV_32F);
-	cv::Mat dst;
-	filter2D(img, dst, CV_32F, ker);*/
-
 	clock_t start, finish;
 
 	cv::Mat result;
@@ -788,10 +702,6 @@ int main(int argc, char* argv[]) {
 		//各种参数的更新
 		index++;
 	}
-
-
-
-
 	camera_close();   //////////////////////
 	return 0;
 }

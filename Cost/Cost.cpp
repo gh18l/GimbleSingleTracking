@@ -187,8 +187,8 @@ int Cost::video_updateflow(cv::Mat src, cv::Point& point)
 
 int Cost::init_people_detection(cv::Mat img)
 {
-	std::string cfgfile = "E:/data/YOLO/yolo.cfg";
-	std::string weightfile = "E:/data/YOLO/yolo.weights";
+	std::string cfgfile = "E:/data/YOLO/yolov3.cfg";
+	std::string weightfile = "E:/data/YOLO/yolov3.weights";
 	detector->init(cfgfile, weightfile, 0);
 	SetBlock(img);
 	return 0;
@@ -241,7 +241,7 @@ int Cost::people_detection(cv::Mat& img)
 		cv::resize(img_region, img_region, cv::Size(416, 416));
 
 		cv::Mat imgf;
-		cv::cvtColor(img_region, imgf, cv::COLOR_BGR2RGB);
+		img_region.convertTo(imgf, CV_32F);
 		imgf.convertTo(imgf, CV_32F, 1.0 / 255.0);
 
 		float *img_h = new float[imgf.rows * imgf.cols * 3];
@@ -608,7 +608,7 @@ std::vector<bbox_t> Cost::detection(cv::Mat img)
 	cv::resize(temp, temp, cv::Size(416, 416));
 
 	cv::Mat imgf;
-	cv::cvtColor(temp, imgf, cv::COLOR_BGR2RGB);
+	temp.convertTo(imgf, CV_32F);
 	imgf.convertTo(imgf, CV_32F, 1.0 / 255.0);
 
 	float *img_h = new float[imgf.rows * imgf.cols * 3];
@@ -778,3 +778,8 @@ double Cost::people_match(cv::Mat img1, cv::Mat img2)
 	double confidence = match.match_people(temp1, temp2);
 	return confidence;
 }
+
+//int Cost::test_tracking()
+//{
+//
+//}

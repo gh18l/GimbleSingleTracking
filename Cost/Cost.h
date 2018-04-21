@@ -31,10 +31,10 @@ private:
 	std::vector<cv::Rect> img_rect;
 	KCFTracker KCF_tracker;
 	///////the number of blocks
-	int rows_b = 4;
-	int cols_b = 4;
+	int rows_b = 1;
+	int cols_b = 1;
 	///////the number of input net
-	int set_b = 4;
+	int set_b = 1;
 
 	///////set the face blocks
 	double width_f = 450.0;
